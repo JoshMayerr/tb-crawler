@@ -63,23 +63,31 @@ def remove_tags_from_list(soup, tag_names):
             tag.decompose()
 
 
-def process_sitemap(url, folder_path):
-    """Process a sitemap, handling nested sitemaps."""
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, features='lxml')
+def process_sitemap(sitemap_url, output_base_folder):
+    """Process a sitemap, handling nested sitemaps and saving HTML content with directory structure."""
+    response = requests.get(sitemap_url)
+    soup = BeautifulSoup(response.content, 'xml')
 
-    # Check for sitemap index file indicating nested sitemaps
     if soup.find_all('sitemap'):
-        # This is a sitemap index file, process each nested sitemap
-        sitemaps = soup.find_all('loc')
-        for sitemap in sitemaps:
-            process_sitemap(sitemap.text, folder_path)
+        # Process each nested sitemap
+        for sitemap in soup.find_all('loc'):
+            child_sitemap_url = sitemap.text
+            process_sitemap(child_sitemap_url, output_base_folder)
     else:
-        # This is a regular sitemap, fetch and save each page URL
-        urls = soup.find_all('loc')
-        for url in urls:
-            print(f"Fetching: {url.text}")
-            fetch_and_save_html(url.text, folder_path)
+        # Process each URL in the sitemap
+        for url in soup.find_all('loc'):
+            page_url = url.text
+            parsed_url = urlparse(page_url)
+            # Decode URL to a normal path
+            path = unquote(parsed_url.path)
+            # Construct the directory path based on the URL path
+            directory_path = os.path.join(
+                output_base_folder, parsed_url.netloc, os.path.dirname(path).lstrip('/'))
+            # Ensure the directory exists
+            ensure_directory(directory_path)
+            print(f"Fetching and saving: {page_url}")
+            # Fetch and save the HTML content
+            fetch_and_save_html(page_url, directory_path)
 
 
 def fetch_from_sitemap(sitemap_url, folder_path):

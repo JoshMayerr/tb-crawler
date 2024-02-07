@@ -1,3 +1,7 @@
-venv
+.venv/
 
-gitignore
+vox_crawled/
+
+clean_html_files/
+
+website_html_files/
